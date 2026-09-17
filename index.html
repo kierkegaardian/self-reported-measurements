@@ -6,8 +6,140 @@
   <meta name="robots" content="noindex, nofollow" />
   <meta name="color-scheme" content="dark" />
   <title>Self-Reported Measurements</title>
+  <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-<p>placeholder - will replace</p>
+  <div id="age-gate" class="gate" role="dialog" aria-modal="true" aria-labelledby="gate-title">
+    <div class="gate-card">
+      <div class="brand">Directory</div>
+      <h1 id="gate-title" style="font-size:28px">18+ only</h1>
+      <p class="lede">Self-Reported Measurements is explicit adult content: voluntarily posted penis length and girth next to an X handle. No photos. No medical claims.</p>
+      <label class="check">
+        <input type="checkbox" id="gate-18" />
+        <span>I am 18 or older and I want to view this public directory.</span>
+      </label>
+      <div style="margin-top:14px;display:flex;gap:8px">
+        <button class="btn primary" id="gate-enter" type="button">Enter</button>
+      </div>
+      <p class="status err" id="gate-msg"></p>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <header class="site">
+      <div>
+        <div class="brand">Public directory</div>
+        <h1>Self-Reported Measurements</h1>
+      </div>
+      <nav>
+        <button type="button" data-view="list" aria-current="page">Directory</button>
+        <button type="button" data-view="submit">Submit</button>
+        <button type="button" data-view="retract">Retract</button>
+      </nav>
+    </header>
+
+    <p class="lede">Adult men (18+) may post their own length and girth next to their own X handle. Entries are self-reported and unverified. You may only submit for yourself. There are no photos, comments, DMs, or contact tools.</p>
+
+    <div class="banner" role="note">
+      <strong>Warning.</strong> Every row is self-reported. Nothing here is measured, verified, or medical data. Handles are not proven to belong to the person who typed them. Numbers can be fake, wrong, or trolling. Do not treat this list as science, a ranking, or evidence about anyone.
+    </div>
+
+    <section id="view-list">
+      <div class="toolbar">
+        <label class="field" style="flex:1;min-width:180px;margin:0">
+          <span class="lbl">Search handle</span>
+          <input id="q" type="search" maxlength="16" placeholder="@handle" autocomplete="off" />
+        </label>
+        <span class="count" id="count"></span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Handle</th>
+              <th>Length</th>
+              <th>Girth</th>
+              <th>Unit</th>
+              <th>Date</th>
+            </tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+        <div class="empty hidden" id="empty">No public entries yet — or none match that handle.</div>
+      </div>
+    </section>
+
+    <section id="view-submit" class="hidden">
+      <h2 style="margin-top:0">Submit your own measurements</h2>
+      <p class="lede">This form posts only the handle you type as <em>your</em> handle. Do not enter someone else’s @. There is no way on this site to attach a measurement to another person as a third-party claim.</p>
+      <form id="submit-form" novalidate>
+        <label class="field">
+          <span class="lbl">Your X handle</span>
+          <input id="s-handle" maxlength="16" placeholder="@yourhandle" autocomplete="username" inputmode="text" />
+          <span class="hint">Your own handle only. 1–15 characters after @. Letters, numbers, underscore. No spaces.</span>
+        </label>
+        <div class="row2">
+          <label class="field">
+            <span class="lbl">Length</span>
+            <input id="s-length" type="number" inputmode="decimal" step="0.1" min="1" max="20" />
+            <span class="hint">1–20 in the unit you pick.</span>
+          </label>
+          <label class="field">
+            <span class="lbl">Girth</span>
+            <input id="s-girth" type="number" inputmode="decimal" step="0.1" min="1" max="15" />
+            <span class="hint">1–15 in the same unit.</span>
+          </label>
+        </div>
+        <label class="field">
+          <span class="lbl">Unit</span>
+          <select id="s-unit">
+            <option value="in">inches</option>
+            <option value="cm">centimetres</option>
+          </select>
+        </label>
+        <label class="field">
+          <span class="lbl">Secret passphrase (for later delete)</span>
+          <input id="s-pass" type="password" minlength="8" maxlength="64" autocomplete="new-password" />
+          <span class="hint">8–64 characters. Remember it. It is the only way to retract this row. It is stored as a hash, not in plain text.</span>
+        </label>
+        <div class="checks">
+          <label class="check">
+            <input type="checkbox" id="s-18" />
+            <span>I am 18 or older.</span>
+          </label>
+          <label class="check">
+            <input type="checkbox" id="s-own" />
+            <span>These are my own measurements and I want them public.</span>
+          </label>
+        </div>
+        <button class="btn primary" type="submit" id="s-btn">Publish my row</button>
+        <p class="status" id="s-msg"></p>
+      </form>
+    </section>
+
+    <section id="view-retract" class="hidden">
+      <h2 style="margin-top:0">Delete / retract</h2>
+      <p class="lede">Enter the same handle and the passphrase you chose at submit time. That removes the public row. There is no email recovery.</p>
+      <form id="retract-form" novalidate>
+        <label class="field">
+          <span class="lbl">Handle</span>
+          <input id="r-handle" maxlength="16" placeholder="@yourhandle" autocomplete="username" />
+        </label>
+        <label class="field">
+          <span class="lbl">Passphrase</span>
+          <input id="r-pass" type="password" maxlength="64" autocomplete="current-password" />
+        </label>
+        <button class="btn danger" type="submit" id="r-btn">Remove my row</button>
+        <p class="status" id="r-msg"></p>
+      </form>
+    </section>
+
+    <footer class="site">
+      <p>18+ only. Self-reported, unverified, not medical data. Not affiliated with X, Twitter, or xAI.</p>
+      <p>No comments, no DMs, no image uploads, no messaging other users. Newest first.</p>
+      <p>Shared list store: crudcrud.com collection (CORS JSON API). This is the strongest shared persistence available in this build environment — not a private database. The free endpoint can expire after inactivity. Passphrases are SHA-256 hashed before storage. Anyone can read public rows.</p>
+    </footer>
+  </div>
+  <script src="app.js"></script>
 </body>
 </html>
