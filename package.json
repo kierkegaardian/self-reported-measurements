@@ -1,0 +1,1 @@
+{"name":"self-reported-measurements","private":true,"type":"module","scripts":{"dev":"wrangler dev","build":"node scripts/build.mjs","check":"tsc --noEmit","test":"node --test tests/*.test.mjs","deploy":"npm run build && wrangler deploy"},"devDependencies":{"wrangler":"latest","typescript":"latest","@cloudflare/workers-types":"latest"}}

@@ -1,6 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <script>
+    if (location.hostname === "raw.githack.com" || location.hostname === "kierkegaardian.github.io") {
+      location.replace("https://self-reported-measurements.self-reported-measurements.workers.dev/" + location.hash);
+    }
+  </script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="robots" content="noindex, nofollow" />
@@ -57,8 +62,8 @@
           <thead>
             <tr>
               <th>Handle</th>
-              <th>Length</th>
-              <th>Girth</th>
+              <th>Erect length</th>
+              <th>Erect girth</th>
               <th>Unit</th>
               <th>Date</th>
             </tr>
@@ -67,11 +72,12 @@
         </table>
         <div class="empty hidden" id="empty">No public entries yet — or none match that handle.</div>
       </div>
+      <div class="toolbar"><button class="btn" id="previous" disabled>Previous</button><button class="btn" id="next" disabled>Next</button></div>
     </section>
 
     <section id="view-submit" class="hidden">
       <h2 style="margin-top:0">Submit your own measurements</h2>
-      <p class="lede">This form posts only the handle you type as <em>your</em> handle. Do not enter someone else’s @. There is no way on this site to attach a measurement to another person as a third-party claim.</p>
+      <p class="lede">This form posts only the handle you type as <em>your</em> handle. Do not enter someone else’s @. Handle ownership is not verified.</p>
       <form id="submit-form" novalidate>
         <label class="field">
           <span class="lbl">Your X handle</span>
@@ -80,14 +86,14 @@
         </label>
         <div class="row2">
           <label class="field">
-            <span class="lbl">Length</span>
-            <input id="s-length" type="number" inputmode="decimal" step="0.1" min="1" max="20" />
-            <span class="hint">1–20 in the unit you pick.</span>
+            <span class="lbl">Erect length</span>
+            <input id="s-length" type="number" inputmode="decimal" step="0.1" min="1" />
+            <span class="hint">1–9.5 inches, or 2.5–24.1 cm.</span>
           </label>
           <label class="field">
-            <span class="lbl">Girth</span>
-            <input id="s-girth" type="number" inputmode="decimal" step="0.1" min="1" max="15" />
-            <span class="hint">1–15 in the same unit.</span>
+            <span class="lbl">Erect girth</span>
+            <input id="s-girth" type="number" inputmode="decimal" step="0.1" min="1" />
+            <span class="hint">1–7 inches, or 2.5–17.8 cm.</span>
           </label>
         </div>
         <label class="field">
@@ -96,11 +102,6 @@
             <option value="in">inches</option>
             <option value="cm">centimetres</option>
           </select>
-        </label>
-        <label class="field">
-          <span class="lbl">Secret passphrase (for later delete)</span>
-          <input id="s-pass" type="password" minlength="8" maxlength="64" autocomplete="new-password" />
-          <span class="hint">8–64 characters. Remember it. It is the only way to retract this row. It is stored as a hash, not in plain text.</span>
         </label>
         <div class="checks">
           <label class="check">
@@ -115,18 +116,19 @@
         <button class="btn primary" type="submit" id="s-btn">Publish my row</button>
         <p class="status" id="s-msg"></p>
       </form>
+      <label class="field hidden" id="removal-receipt"><span class="lbl">Save your removal code</span><input id="removal-code" readonly autocomplete="off" /><span class="hint">Copy this code somewhere safe. You need it to remove your entry.</span></label>
     </section>
 
     <section id="view-retract" class="hidden">
       <h2 style="margin-top:0">Delete / retract</h2>
-      <p class="lede">Enter the same handle and the passphrase you chose at submit time. That removes the public row. There is no email recovery.</p>
+      <p class="lede">Enter the same handle and the removal code you received when publishing. That removes the public row. There is no email recovery.</p>
       <form id="retract-form" novalidate>
         <label class="field">
           <span class="lbl">Handle</span>
           <input id="r-handle" maxlength="16" placeholder="@yourhandle" autocomplete="username" />
         </label>
         <label class="field">
-          <span class="lbl">Passphrase</span>
+          <span class="lbl">Removal code</span>
           <input id="r-pass" type="password" maxlength="64" autocomplete="current-password" />
         </label>
         <button class="btn danger" type="submit" id="r-btn">Remove my row</button>
@@ -137,7 +139,7 @@
     <footer class="site">
       <p>18+ only. Self-reported, unverified, not medical data. Not affiliated with X, Twitter, or xAI.</p>
       <p>No comments, no DMs, no image uploads, no messaging other users. Newest first.</p>
-      <p>Shared list store: crudcrud.com collection (CORS JSON API). This is the strongest shared persistence available in this build environment — not a private database. The free endpoint can expire after inactivity. Passphrases are SHA-256 hashed before storage. Anyone can read public rows.</p>
+      <p>Entries remain public until retracted. Keep your secret removal code: it is required to remove your entry, and cannot be recovered. Deleted entries may remain in backups for a limited time.</p>
     </footer>
   </div>
   <script src="app.js"></script>

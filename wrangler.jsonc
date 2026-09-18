@@ -1,0 +1,9 @@
+{
+  "name": "self-reported-measurements",
+  "main": "src/worker.ts",
+  "compatibility_date": "2026-09-18",
+  "workers_dev": true,
+  "assets": { "directory": "./dist", "binding": "ASSETS", "run_worker_first": ["/api/*"] },
+  "d1_databases": [{ "binding": "DB", "database_name": "self-reported-measurements", "database_id": "30280a72-aaca-4202-a978-919120924511", "migrations_dir": "migrations" }],
+  "ratelimits": [{ "name": "WRITES", "namespace_id": "1001", "simple": { "limit": 10, "period": 60 } }]
+}

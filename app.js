@@ -1,4 +1,4 @@
-const API = "https://crudcrud.com/api/2f91e0d723d8495b9d98a89ae0dbd119/entries";
+const API = "/api/entries";
 const HANDLE_RE = /^[A-Za-z0-9_]{1,15}$/;
 
 const $ = (id) => document.getElementById(id);
@@ -31,16 +31,6 @@ function parseMeasure(raw, min, max, label) {
   return { value: Math.round(n * 10) / 10 };
 }
 
-async function sha256Hex(text) {
-  const data = new TextEncoder().encode(text);
-  const buf = await crypto.subtle.digest("SHA-256", data);
-  return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
-}
-
-async function passHash(handle, pass) {
-  return sha256Hex("srm-v1|" + handle.toLowerCase() + "|" + pass);
-}
-
 function setView(name) {
   Object.entries(views).forEach(([k, el]) => el.classList.toggle("hidden", k !== name));
   document.querySelectorAll("nav button").forEach((b) => {
@@ -65,6 +55,8 @@ $("gate-enter").addEventListener("click", () => {
 if (sessionStorage.getItem("srm-18") === "1") $("age-gate").classList.add("hidden");
 
 let cache = [];
+let page = 0;
+let loadId = 0;
 
 function fmtDate(iso) {
   const d = new Date(iso);
@@ -81,7 +73,7 @@ function render() {
 
   const tb = $("rows");
   tb.replaceChildren();
-  $("count").textContent = list.length + " shown / " + cache.length + " public";
+  $("count").textContent = list.length + " shown (page " + (page + 1) + ")";
   $("empty").classList.toggle("hidden", list.length > 0);
 
   for (const row of list) {
@@ -103,20 +95,40 @@ function render() {
   }
 }
 
-async function load() {
-  const res = await fetch(API, { headers: { Accept: "application/json" } });
-  if (!res.ok) throw new Error("Could not load the shared list (" + res.status + ").");
+async function api(url, body) {
+  const res = await fetch(url, body ? {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body)
+  } : {});
   const data = await res.json();
-  cache = Array.isArray(data) ? data.map(normalizeRow).filter(Boolean) : [];
+  if (!res.ok) throw new Error(data.error || "The directory is temporarily unavailable.");
+  return data;
+}
+async function load() {
+  const id = ++loadId;
+  const query = $("q").value.replace(/^@/, "").trim();
+  let data;
+  try { data = await api(API + "?" + new URLSearchParams({ q: query, offset: String(page * 100) })); }
+  catch (error) { if (id === loadId) throw error; return; }
+  if (id !== loadId) return;
+  cache = data.entries.map(normalizeRow).filter(Boolean);
+  $("previous").disabled = page === 0;
+  $("next").disabled = !data.more;
+  $("empty").textContent = "No public entries yet — or none match that handle.";
   render();
+}
+function loadError(err) {
+  cache = [];
+  render();
+  $("empty").textContent = err.message || "Could not load the directory.";
 }
 
 function normalizeRow(row) {
   if (!row || typeof row !== "object") return null;
   const parsed = parseHandle(row.handle);
   if (parsed.error) return null;
-  const len = parseMeasure(row.length, 1, 20, "Length");
-  const gir = parseMeasure(row.girth, 1, 15, "Girth");
+  const factor = row.unit === "cm" ? 2.54 : 1;
+  const len = parseMeasure(row.length, Math.round(factor * 10) / 10, Math.round(9.5 * factor * 10) / 10, "Length");
+  const gir = parseMeasure(row.girth, Math.round(factor * 10) / 10, Math.round(7 * factor * 10) / 10, "Girth");
   if (len.error || gir.error) return null;
   const unit = row.unit === "cm" ? "cm" : "in";
   return {
@@ -126,11 +138,17 @@ function normalizeRow(row) {
     girth: gir.value,
     unit,
     createdAt: sanitizePlain(row.createdAt || ""),
-    passHash: String(row.passHash || ""),
   };
 }
 
-$("q").addEventListener("input", render);
+let searchTimer;
+$("q").addEventListener("input", () => {
+  ++loadId;
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => { page = 0; load().catch(loadError); }, 250);
+});
+$("previous").addEventListener("click", () => { page = Math.max(0, page - 1); load().catch(loadError); });
+$("next").addEventListener("click", () => { page++; load().catch(loadError); });
 
 $("submit-form").addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -141,43 +159,33 @@ $("submit-form").addEventListener("submit", async (e) => {
 
   const h = parseHandle($("s-handle").value);
   if (h.error) return fail(msg, h.error);
-  const len = parseMeasure($("s-length").value, 1, 20, "Length");
+  const factor = $("s-unit").value === "cm" ? 2.54 : 1;
+  const len = parseMeasure($("s-length").value, Math.round(factor * 10) / 10, Math.round(9.5 * factor * 10) / 10, "Length");
   if (len.error) return fail(msg, len.error);
-  const gir = parseMeasure($("s-girth").value, 1, 15, "Girth");
+  const gir = parseMeasure($("s-girth").value, Math.round(factor * 10) / 10, Math.round(7 * factor * 10) / 10, "Girth");
   if (gir.error) return fail(msg, gir.error);
   const unit = $("s-unit").value === "cm" ? "cm" : "in";
-  const pass = $("s-pass").value;
-  if (pass.length < 8 || pass.length > 64) return fail(msg, "Passphrase must be 8–64 characters.");
   if (!$("s-18").checked) return fail(msg, "Confirm you are 18 or older.");
   if (!$("s-own").checked) return fail(msg, "Confirm these are your own measurements and you want them public.");
 
   btn.disabled = true;
   try {
-    await load();
-    const existing = cache.find((r) => r.handle.toLowerCase() === h.handle.toLowerCase());
-    if (existing) {
-      return fail(msg, "That handle already has a public row. Retract it first with the original passphrase. You cannot claim someone else’s handle.");
+    let code = $("removal-code").value;
+    if (!code || $("removal-code").dataset.handle !== h.handle.toLowerCase()) {
+      code = Array.from(crypto.getRandomValues(new Uint8Array(32)), b => b.toString(16).padStart(2, "0")).join("");
     }
-    const hash = await passHash(h.handle, pass);
-    const body = {
-      handle: h.handle,
-      length: len.value,
-      girth: gir.value,
-      unit,
-      createdAt: new Date().toISOString(),
-      passHash: hash,
-    };
-    const res = await fetch(API, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Accept: "application/json" },
-      body: JSON.stringify(body),
-    });
-    if (!res.ok) throw new Error("Save failed (" + res.status + ").");
+    $("removal-code").value = code;
+    $("removal-code").dataset.handle = h.handle.toLowerCase();
+    $("removal-receipt").classList.remove("hidden");
+    await api(API, { handle: h.handle, length: len.value, girth: gir.value, unit,
+      adult: true, own: true, removalCode: code });
+    page = 0;
+    $("q").value = "";
     $("submit-form").reset();
     msg.className = "status ok";
-    msg.textContent = "Published. Remember the passphrase if you want to retract later.";
-    await load();
-    setView("list");
+    msg.textContent = "Published. Save your removal code below; it is shown only once.";
+    $("removal-receipt").classList.remove("hidden");
+    await load().catch(loadError);
   } catch (err) {
     fail(msg, err.message || "Could not publish.");
   } finally {
@@ -194,20 +202,15 @@ $("retract-form").addEventListener("submit", async (e) => {
   const h = parseHandle($("r-handle").value);
   if (h.error) return fail(msg, h.error);
   const pass = $("r-pass").value;
-  if (!pass) return fail(msg, "Passphrase is required.");
+  if (!pass) return fail(msg, "Removal code is required.");
   btn.disabled = true;
   try {
-    await load();
-    const existing = cache.find((r) => r.handle.toLowerCase() === h.handle.toLowerCase());
-    if (!existing || !existing._id) return fail(msg, "No public row for that handle.");
-    const hash = await passHash(h.handle, pass);
-    if (hash !== existing.passHash) return fail(msg, "Handle and passphrase do not match.");
-    const res = await fetch(API + "/" + encodeURIComponent(existing._id), { method: "DELETE" });
-    if (!res.ok) throw new Error("Delete failed (" + res.status + ").");
+    await api("/api/retract", { handle: h.handle, passphrase: pass });
+    page = 0;
     $("retract-form").reset();
     msg.className = "status ok";
     msg.textContent = "Row removed.";
-    await load();
+    await load().catch(loadError);
     setView("list");
   } catch (err) {
     fail(msg, err.message || "Could not retract.");
@@ -224,7 +227,4 @@ function fail(el, text) {
 const startHash = (location.hash || "").replace("#", "");
 if (startHash === "submit" || startHash === "retract") setView(startHash);
 
-load().catch((err) => {
-  $("empty").classList.remove("hidden");
-  $("empty").textContent = err.message + " Shared store may be down or expired.";
-});
+load().catch(loadError);
