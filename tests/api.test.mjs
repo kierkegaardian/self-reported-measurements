@@ -6,6 +6,7 @@ import worker from '../src/worker.ts';
 function setup() {
   const sql = new DatabaseSync(':memory:');
   sql.exec(readFileSync(new URL('../migrations/0001_entries.sql', import.meta.url), 'utf8'));
+  sql.exec(readFileSync(new URL('../migrations/0002_optional_details.sql', import.meta.url), 'utf8'));
   const env = { DB: { prepare(query) { return { bind(...args) { const s = sql.prepare(query); return {
     async first() { return s.get(...args) || null; },
     async all() { return { results: s.all(...args) }; },
@@ -48,7 +49,7 @@ test('validation, cross-origin, method and rate limit boundaries', async () => {
 });
 test('paged results, search and secret separation', async () => {
   const { sql, call } = setup();
-  const insert = sql.prepare('INSERT INTO entries VALUES (?, ?, 6, 5, ?, ?, ?, ?)');
+  const insert = sql.prepare('INSERT INTO entries (id, handle, length, girth, unit, createdAt, salt, verifier) VALUES (?, ?, 6, 5, ?, ?, ?, ?)');
   for (let i = 0; i < 102; i++) insert.run(String(i), `person${i}`, 'in', new Date(i * 1000).toISOString(), 'salt', 'private');
   const first = await (await call('/api/entries')).json();
   const second = await (await call('/api/entries?offset=100')).json();
@@ -63,4 +64,25 @@ test('user-selected maximums enforced in both units', async () => {
   for (const override of [{length: 9.6}, {girth: 7.1}, {unit: 'cm', length: 24.2}, {unit: 'cm', girth: 17.9}])
     assert.equal((await call('/api/entries', {...entry, ...override})).status, 400);
   assert.equal((await call('/api/entries', {...entry, length: 9.5, girth: 7})).status, 201);
+});
+
+test('optional details persist, missing values remain null, invalid input rejected', async () => {
+  const { call } = setup();
+  for (const override of [{circumcision: 'unknown'}, {circumcision: []}, {flaccidLength: ''}, {flaccidLength: 0}, {flaccidGirth: 7.1}, {unit: 'cm', flaccidLength: 24.2}])
+    assert.equal((await call('/api/entries', {...entry, ...override})).status, 400);
+  assert.equal((await call('/api/entries', {...entry, circumcision: 'partial', flaccidLength: 3.2})).status, 201);
+  const row = (await (await call('/api/entries')).json()).entries[0];
+  assert.equal(row.circumcision, 'partial'); assert.equal(row.flaccidLength, 3.2); assert.equal(row.flaccidGirth, null);
+  assert.equal((await call('/api/entries', {...entry, handle: 'blank_details'})).status, 201);
+  const blank = (await (await call('/api/entries?q=blank_details')).json()).entries[0];
+  assert.equal(blank.circumcision, null); assert.equal(blank.flaccidLength, null); assert.equal(blank.flaccidGirth, null);
+});
+test('additive migration preserves existing entries and removal credentials', () => {
+  const sql = new DatabaseSync(':memory:');
+  sql.exec(readFileSync(new URL('../migrations/0001_entries.sql', import.meta.url), 'utf8'));
+  sql.prepare('INSERT INTO entries VALUES (?, ?, 6, 5, ?, ?, ?, ?)').run('old-id', 'legacy', 'in', '2026-09-18', 'old-salt', 'old-verifier');
+  sql.exec(readFileSync(new URL('../migrations/0002_optional_details.sql', import.meta.url), 'utf8'));
+  const row = sql.prepare('SELECT * FROM entries').get();
+  assert.equal(row.handle, 'legacy'); assert.equal(row.verifier, 'old-verifier');
+  assert.equal(row.circumcision, null); assert.equal(row.flaccidLength, null); assert.equal(row.flaccidGirth, null);
 });

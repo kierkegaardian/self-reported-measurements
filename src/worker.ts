@@ -1,7 +1,7 @@
-import { credentials, measurements, verifier, equal, InputError } from './security.ts';
+import { credentials, measurements, optionalDetails, verifier, equal, InputError } from './security.ts';
 interface Env { DB: D1Database; ASSETS: Fetcher; WRITES: RateLimit }
 interface SecretRow { id: string; salt: string; verifier: string }
-const PUBLIC = 'id, handle, length, girth, unit, createdAt';
+const PUBLIC = 'id, handle, length, girth, unit, createdAt, circumcision, flaccidLength, flaccidGirth';
 function json(value: unknown, status = 200): Response {
   return Response.json(value, { status, headers: { 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' } });
 }
@@ -56,12 +56,13 @@ export default {
         return json({ ok: true });
       }
       const values = measurements(body);
+      const details = optionalDetails(body);
       const salt = crypto.randomUUID();
       const removalCode = body.removalCode;
       if (typeof removalCode !== "string" || !/^[a-f0-9]{64}$/.test(removalCode)) throw new InputError("A generated removal code is required.");
       const hash = await verifier(removalCode, salt);
-      const result = await env.DB.prepare('INSERT INTO entries (id, handle, length, girth, unit, createdAt, salt, verifier) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(handle) DO NOTHING')
-        .bind(crypto.randomUUID(), handle, values.length, values.girth, values.unit, new Date().toISOString(), salt, hash).run();
+      const result = await env.DB.prepare('INSERT INTO entries (id, handle, length, girth, unit, createdAt, salt, verifier, circumcision, flaccidLength, flaccidGirth) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(handle) DO NOTHING')
+        .bind(crypto.randomUUID(), handle, values.length, values.girth, values.unit, new Date().toISOString(), salt, hash, details.circumcision, details.flaccidLength, details.flaccidGirth).run();
       if (!result.meta.changes) return json({ error: 'That handle already has an entry. Retract it first.' }, 409);
       return json({ ok: true, removalCode }, 201);
     } catch (error) {

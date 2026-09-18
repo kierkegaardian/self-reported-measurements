@@ -48,7 +48,7 @@ Backups include private removal-code verifiers: do not commit or publish them. T
 
 ## Measurement limits
 
-Erect length: 1–9.5 inches or 2.5–24.1 cm. Erect girth: 1–7 inches or 2.5–17.8 cm. These are site submission limits, not medical reference ranges. Optional circumcision and flaccid fields are not yet included.
+Erect length: 1–9.5 inches or 2.5–24.1 cm. Erect girth: 1–7 inches or 2.5–17.8 cm. These are site submission limits, not medical reference ranges. Circumcision status, flaccid length and flaccid girth are independently optional. Blank fields remain NULL and display “Not provided.” Flaccid measurements are relaxed, unstretched and use the same row unit and maximums; the minimum entered value is 0.1. Additional details expand within each directory row.
 
 ## Removal codes
 

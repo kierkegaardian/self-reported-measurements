@@ -91,6 +91,19 @@ function render() {
       td.textContent = text;
       tr.appendChild(td);
     });
+    const td = document.createElement("td");
+    const details = document.createElement("details");
+    const summary = document.createElement("summary");
+    summary.textContent = "View details";
+    details.appendChild(summary);
+    const statuses = { circumcised: "Circumcised", uncircumcised: "Uncircumcised", partial: "Partially circumcised" };
+    for (const text of [
+      "Circumcision: " + (statuses[row.circumcision] || "Not provided"),
+      "Flaccid length: " + (row.flaccidLength == null ? "Not provided" : row.flaccidLength + " " + row.unit),
+      "Flaccid girth: " + (row.flaccidGirth == null ? "Not provided" : row.flaccidGirth + " " + row.unit),
+    ]) { const line = document.createElement("p"); line.textContent = text; details.appendChild(line); }
+    td.appendChild(details);
+    tr.appendChild(td);
     tb.appendChild(tr);
   }
 }
@@ -138,6 +151,9 @@ function normalizeRow(row) {
     girth: gir.value,
     unit,
     createdAt: sanitizePlain(row.createdAt || ""),
+    circumcision: row.circumcision ?? null,
+    flaccidLength: row.flaccidLength ?? null,
+    flaccidGirth: row.flaccidGirth ?? null,
   };
 }
 
@@ -165,6 +181,17 @@ $("submit-form").addEventListener("submit", async (e) => {
   const gir = parseMeasure($("s-girth").value, Math.round(factor * 10) / 10, Math.round(7 * factor * 10) / 10, "Girth");
   if (gir.error) return fail(msg, gir.error);
   const unit = $("s-unit").value === "cm" ? "cm" : "in";
+  const optional = { circumcision: $("s-circumcision").value || null };
+  for (const [field, id, max, label] of [
+    ["flaccidLength", "s-flaccid-length", 9.5, "Flaccid length"],
+    ["flaccidGirth", "s-flaccid-girth", 7, "Flaccid girth"],
+  ]) {
+    const raw = $(id).value.trim();
+    if (!raw) { optional[field] = null; continue; }
+    const parsed = parseMeasure(raw, 0.1, Math.round(max * factor * 10) / 10, label);
+    if (parsed.error) return fail(msg, parsed.error);
+    optional[field] = parsed.value;
+  }
   if (!$("s-18").checked) return fail(msg, "Confirm you are 18 or older.");
   if (!$("s-own").checked) return fail(msg, "Confirm these are your own measurements and you want them public.");
 
@@ -178,7 +205,7 @@ $("submit-form").addEventListener("submit", async (e) => {
     $("removal-code").dataset.handle = h.handle.toLowerCase();
     $("removal-receipt").classList.remove("hidden");
     await api(API, { handle: h.handle, length: len.value, girth: gir.value, unit,
-      adult: true, own: true, removalCode: code });
+      adult: true, own: true, removalCode: code, ...optional });
     page = 0;
     $("q").value = "";
     $("submit-form").reset();

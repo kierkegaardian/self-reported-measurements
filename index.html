@@ -66,6 +66,7 @@
               <th>Erect girth</th>
               <th>Unit</th>
               <th>Date</th>
+              <th>Optional details</th>
             </tr>
           </thead>
           <tbody id="rows"></tbody>
@@ -103,6 +104,23 @@
             <option value="cm">centimetres</option>
           </select>
         </label>
+        <fieldset>
+          <legend>Optional details</legend>
+          <p class="hint">Only share what you want public. All measurements use the unit selected above.</p>
+          <label class="field"><span class="lbl">Circumcision status</span>
+            <select id="s-circumcision">
+              <option value="">Prefer not to say</option>
+              <option value="circumcised">Circumcised</option>
+              <option value="uncircumcised">Uncircumcised</option>
+              <option value="partial">Partially circumcised</option>
+            </select>
+          </label>
+          <div class="row2">
+            <label class="field"><span class="lbl">Flaccid length (optional)</span><input id="s-flaccid-length" type="number" step="0.1" min="0.1" inputmode="decimal" /></label>
+            <label class="field"><span class="lbl">Flaccid girth (optional)</span><input id="s-flaccid-girth" type="number" step="0.1" min="0.1" inputmode="decimal" /></label>
+          </div>
+          <p class="hint">Measure relaxed and unstretched. Leave either blank if you prefer. Maximum length: 9.5 in / 24.1 cm; girth: 7 in / 17.8 cm.</p>
+        </fieldset>
         <div class="checks">
           <label class="check">
             <input type="checkbox" id="s-18" />
